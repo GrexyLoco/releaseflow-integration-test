@@ -57,10 +57,26 @@ function Test-G4StableGate {
         }
     }
 
-    # Filter out ReleaseFlow itself from checks (it's running now, not a CI check)
+    # Filter out the current workflow/job from checks (it's running now, not a CI check to wait for)
+    # Patterns for ReleaseFlow variations, plus get current job name from environment
     $releaseFlowPatterns = @('releaseflow', 'release-flow', 'release_flow', 'release flow')
+    
+    # Add current job name if available (GitHub Actions sets GITHUB_JOB)
+    $currentJobName = $env:GITHUB_JOB
+    if ($currentJobName) {
+        Write-Verbose "Test-G4StableGate: Current job name is '$currentJobName'"
+    }
+
     $filteredChecks = @($prStatus.statusCheckRollup | Where-Object {
             $checkName = $_.name.ToLowerInvariant()
+            
+            # Check if this is the current running job
+            if ($currentJobName -and $checkName -eq $currentJobName.ToLowerInvariant()) {
+                Write-Verbose "Test-G4StableGate: Excluding current job: $($_.name)"
+                return $false
+            }
+            
+            # Check against ReleaseFlow patterns
             $isReleaseFlow = $false
             foreach ($pattern in $releaseFlowPatterns) {
                 if ($checkName -like "*$pattern*") {
