@@ -57,12 +57,29 @@ function Test-G4StableGate {
         }
     }
 
-    # Check for failed checks
-    $failedChecks = @($prStatus.statusCheckRollup | Where-Object {
+    # Filter out ReleaseFlow itself from checks (it's running now, not a CI check)
+    $releaseFlowPatterns = @('releaseflow', 'release-flow', 'release_flow', 'release flow')
+    $filteredChecks = @($prStatus.statusCheckRollup | Where-Object {
+            $checkName = $_.name.ToLowerInvariant()
+            $isReleaseFlow = $false
+            foreach ($pattern in $releaseFlowPatterns) {
+                if ($checkName -like "*$pattern*") {
+                    $isReleaseFlow = $true
+                    Write-Verbose "Test-G4StableGate: Excluding self-check: $($_.name)"
+                    break
+                }
+            }
+            -not $isReleaseFlow
+        })
+
+    Write-Verbose "Test-G4StableGate: Checking $($filteredChecks.Count) CI checks (excluded ReleaseFlow)"
+
+    # Check for failed checks (excluding ReleaseFlow)
+    $failedChecks = @($filteredChecks | Where-Object {
             $_.conclusion -notin @('SUCCESS', 'SKIPPED', 'NEUTRAL')
         })
 
-    $pendingChecks = @($prStatus.statusCheckRollup | Where-Object {
+    $pendingChecks = @($filteredChecks | Where-Object {
             $null -eq $_.conclusion -or $_.conclusion -eq ''
         })
 
