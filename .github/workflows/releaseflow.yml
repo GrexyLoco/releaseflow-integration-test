@@ -1,0 +1,44 @@
+# ReleaseFlow Workflow
+#
+# Automatische Release-Orchestrierung bei gemergten PRs
+# Unterstützt: Alpha (dev/*), Beta (release/*), Stable (main/master)
+
+name: ReleaseFlow
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+      - 'dev/v*'
+      - 'release/v*'
+
+jobs:
+  release:
+    # Nur bei gemergten PRs (nicht bei geschlossenen ohne Merge)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write      # Für Tags und Releases
+      pull-requests: write # Für Backflow-PRs
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Vollständige History für Tag-Operationen
+      
+      - name: Run ReleaseFlow
+        uses: GrexyLoco/K.Actions.ReleaseFlow@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## ReleaseFlow Result" >> $GITHUB_STEP_SUMMARY
+          echo "- **Phase:** ${{ steps.release.outputs.phase || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.release.outputs.version || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL:** ${{ steps.release.outputs.release-url || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
