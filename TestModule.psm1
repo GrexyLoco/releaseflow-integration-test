@@ -27,3 +27,4 @@ Export-ModuleMember -Function Get-SecondFeature
 
 
 function Get-SecondFeature { return 'Feature 2!' }
+function Test-AlphaIncrement { 'Alpha increment test' }
