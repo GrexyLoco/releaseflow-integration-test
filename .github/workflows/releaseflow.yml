@@ -2,6 +2,8 @@
 #
 # Automatische Release-Orchestrierung bei gemergten PRs
 # Unterstützt: Alpha (dev/*), Beta (release/*), Stable (main/master)
+#
+# Hinweis: Verwendet PAT für Zugriff auf private Action
 
 name: ReleaseFlow
 
@@ -20,20 +22,24 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     
-    permissions:
-      contents: write      # Für Tags und Releases
-      pull-requests: write # Für Backflow-PRs
-    
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Vollständige History für Tag-Operationen
+          fetch-depth: 0
+          token: ${{ secrets.LOESCHMICH }}
+      
+      - name: Checkout ReleaseFlow Action
+        uses: actions/checkout@v4
+        with:
+          repository: GrexyLoco/K.Actions.ReleaseFlow
+          path: .github/actions/releaseflow
+          token: ${{ secrets.LOESCHMICH }}
       
       - name: Run ReleaseFlow
-        uses: GrexyLoco/K.Actions.ReleaseFlow@master
+        uses: ./.github/actions/releaseflow
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.LOESCHMICH }}
       
       - name: Summary
         if: always()
@@ -42,3 +48,4 @@ jobs:
           echo "- **Phase:** ${{ steps.release.outputs.phase || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ steps.release.outputs.version || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL:** ${{ steps.release.outputs.release-url || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+
