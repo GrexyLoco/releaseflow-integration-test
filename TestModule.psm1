@@ -17,3 +17,10 @@ function Get-FirstFeature {
 }
 
 Export-ModuleMember -Function Get-FirstFeature
+
+
+function Get-SecondFeature {
+    return 'Hello from Feature 2!'
+}
+
+Export-ModuleMember -Function Get-SecondFeature
