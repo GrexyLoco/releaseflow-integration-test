@@ -7,4 +7,4 @@ Aktuell: **0.0.0** (wird durch ReleaseFlow erhöht)
 
 ## Struktur
 - PowerShell Modul mit .psd1 Manifest
-- Verwendet den ReleaseFlow-Workflow aus K.Actions.ReleaseFlow
+- Verwendet den ReleaseFlow-Workflow aus K.Actions.ReleaseFlow# Test 03:41:11
