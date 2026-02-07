@@ -16,3 +16,7 @@ Aktuell: **0.0.0** (wird durch ReleaseFlow erhöht)
 # Beta promotion test
 # Beta bugfix
 # Beta bugfix
+
+
+## Release v1.0.0
+This is the stable release of TestModule.
