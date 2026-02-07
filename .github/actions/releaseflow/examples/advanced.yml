@@ -1,0 +1,90 @@
+# Advanced ReleaseFlow Workflow
+#
+# This setup includes:
+# - Custom Smartagr version
+# - Output handling
+# - Slack notification
+# - Manual trigger option
+
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - 'dev/v*'
+      - 'release/v*'
+  
+  # Allow manual trigger for re-runs
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to process'
+        required: true
+        type: number
+
+jobs:
+  release:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    outputs:
+      phase: ${{ steps.release.outputs.phase }}
+      version: ${{ steps.release.outputs.version }}
+      release-url: ${{ steps.release.outputs.release-url }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run ReleaseFlow
+        id: release
+        uses: GrexyLoco/K.Actions.ReleaseFlow@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          smartagr-version: 'v1.2.0'  # Pin specific version
+      
+      - name: Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Phase | ${{ steps.release.outputs.phase }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.release.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release | [${{ steps.release.outputs.version }}](${{ steps.release.outputs.release-url }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tags | ${{ steps.release.outputs.tags-created }} |" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    needs: release
+    if: always() && needs.release.outputs.phase == 'stable'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "🚀 Released ${{ needs.release.outputs.version }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*New Stable Release*\nVersion: `${{ needs.release.outputs.version }}`\n<${{ needs.release.outputs.release-url }}|View Release>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,69 @@
+name: 'K.Actions.ReleaseFlow'
+description: 'Automated release orchestration with guardrails, backflow PRs, and semantic versioning'
+author: 'GrexyLoco'
+
+branding:
+  icon: 'git-merge'
+  color: 'green'
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access (releases, PRs, branches)'
+    required: true
+  smartagr-version:
+    description: 'Version of K.PSGallery.Smartagr to use (default: latest)'
+    required: false
+    default: 'latest'
+
+outputs:
+  phase:
+    description: 'Detected release phase (alpha, beta, stable, freeze)'
+    value: ${{ steps.release.outputs.phase }}
+  version:
+    description: 'Version that was released'
+    value: ${{ steps.release.outputs.version }}
+  release-url:
+    description: 'URL of the created GitHub release'
+    value: ${{ steps.release.outputs.release-url }}
+  tags-created:
+    description: 'Comma-separated list of tags created'
+    value: ${{ steps.release.outputs.tags-created }}
+  backflow-prs:
+    description: 'Comma-separated list of backflow PR URLs (only for stable releases)'
+    value: ${{ steps.release.outputs.backflow-prs }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Smartagr module
+      shell: pwsh
+      run: |
+        $version = '${{ inputs.smartagr-version }}'
+        if ($version -eq 'latest') {
+            Install-Module -Name 'K.PSGallery.Smartagr' -Force -Scope CurrentUser -AllowClobber
+        } else {
+            Install-Module -Name 'K.PSGallery.Smartagr' -RequiredVersion $version -Force -Scope CurrentUser -AllowClobber
+        }
+        Write-Host "::notice::Smartagr module installed"
+
+    - name: Execute Release Flow
+      id: release
+      shell: pwsh
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Import the ReleaseFlow module from action directory
+        Import-Module '${{ github.action_path }}/K.Actions.ReleaseFlow.psd1' -Force
+
+        # Execute the release - all logic is in PowerShell, YAML stays minimal
+        $result = New-Release -Verbose
+
+        # Set outputs for GitHub Actions
+        "phase=$($result.Phase)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "version=$($result.Version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "release-url=$($result.ReleaseUrl)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "tags-created=$($result.TagsCreated -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "backflow-prs=$($result.BackflowPRs -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+        # Write job summary
+        $result | ConvertTo-Json -Depth 3 | Write-Host

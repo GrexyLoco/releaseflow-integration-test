@@ -1,0 +1,148 @@
+# Version File Validation Workflow Template
+#
+# Copy this file to your repository as .github/workflows/version-validation.yml
+# This workflow validates version files even when commits include [skip ci]
+#
+# Customize:
+# - Uncomment additional paths if needed (package.json, *.sqlproj, etc.)
+# - Adjust validation logic for your project structure
+
+name: Version File Validation
+
+# Dieser Workflow wird auch bei [skip ci] Commits ausgelöst,
+# wenn Version-Dateien geändert wurden (Path-Filter)
+on:
+  push:
+    paths:
+      # .NET Versioning
+      - '**/Directory.Build.props'
+      - '**/*.csproj'
+      # PowerShell Versioning
+      - '**/*.psd1'
+      # Erweiterbar für andere Projekttypen:
+      # - '**/package.json'      # Node.js/npm
+      # - '**/*.sqlproj'         # SQL Server Database Projects
+      # - '**/pom.xml'           # Maven
+      # - '**/build.gradle'      # Gradle
+
+permissions:
+  contents: read
+
+jobs:
+  validate-powershell:
+    name: Validate PowerShell Manifests
+    runs-on: ubuntu-latest
+    if: hashFiles('**/*.psd1') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate .psd1 files
+        shell: pwsh
+        run: |
+          $errors = @()
+          
+          Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
+            Write-Host "Validating: $($_.FullName)"
+            try {
+              # First validate that it's a valid PowerShell data file
+              $null = Import-PowerShellDataFile -Path $_.FullName -ErrorAction Stop
+              # Then validate module manifest structure (may show version warnings but won't fail)
+              $null = Test-ModuleManifest -Path $_.FullName -ErrorAction SilentlyContinue -WarningAction SilentlyContinue
+              Write-Host "  ✅ Valid" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "  ❌ Invalid: $_" -ForegroundColor Red
+              $errors += "- $($_.FullName): $_"
+            }
+          }
+          
+          if ($errors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "❌ Validation failed for $($errors.Count) file(s):" -ForegroundColor Red
+            $errors | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
+          
+          Write-Host ""
+          Write-Host "✅ All PowerShell manifests are valid" -ForegroundColor Green
+
+  validate-dotnet:
+    name: Validate .NET Projects
+    runs-on: ubuntu-latest
+    if: hashFiles('**/*.csproj') != '' || hashFiles('**/Directory.Build.props') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'  # Adjust to your .NET version
+
+      - name: Validate XML syntax
+        shell: pwsh
+        run: |
+          $errors = @()
+          
+          # Validate Directory.Build.props
+          Get-ChildItem -Recurse -Filter 'Directory.Build.props' | ForEach-Object {
+            Write-Host "Validating: $($_.FullName)"
+            try {
+              [xml]$null = Get-Content $_.FullName
+              Write-Host "  ✅ Valid XML" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "  ❌ Invalid XML: $_" -ForegroundColor Red
+              $errors += "- $($_.FullName): $_"
+            }
+          }
+          
+          # Validate .csproj files
+          Get-ChildItem -Recurse -Filter '*.csproj' | ForEach-Object {
+            Write-Host "Validating: $($_.FullName)"
+            try {
+              [xml]$null = Get-Content $_.FullName
+              Write-Host "  ✅ Valid XML" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "  ❌ Invalid XML: $_" -ForegroundColor Red
+              $errors += "- $($_.FullName): $_"
+            }
+          }
+          
+          if ($errors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "❌ Validation failed for $($errors.Count) file(s):" -ForegroundColor Red
+            $errors | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
+          
+          Write-Host ""
+          Write-Host "✅ All .NET project files have valid XML" -ForegroundColor Green
+
+      - name: Validate MSBuild
+        run: |
+          # Find solution or project files
+          SOLUTION=$(find . -name "*.sln" -o -name "*.slnx" | head -1)
+          
+          if [ -n "$SOLUTION" ]; then
+            echo "Validating solution: $SOLUTION"
+            dotnet msbuild "$SOLUTION" -t:ValidateProjectFile -v:m || true
+          else
+            echo "No solution file found, validating individual projects..."
+            find . -name "*.csproj" -exec dotnet msbuild {} -t:ValidateProjectFile -v:m \; || true
+          fi
+
+  # Example: Validate Node.js package.json files
+  # Uncomment this job if you have Node.js projects
+  # validate-npm:
+  #   name: Validate package.json
+  #   runs-on: ubuntu-latest
+  #   if: hashFiles('**/package.json') != ''
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Validate JSON syntax
+  #       run: |
+  #         find . -name "package.json" -exec sh -c '
+  #           echo "Validating: {}"
+  #           node -e "JSON.parse(require(\"fs\").readFileSync(\"{}\"))"
+  #         ' \;

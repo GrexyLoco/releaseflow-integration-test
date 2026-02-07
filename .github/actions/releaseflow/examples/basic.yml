@@ -1,0 +1,35 @@
+# Basic ReleaseFlow Workflow
+# 
+# This is the minimal setup for K.Actions.ReleaseFlow.
+# It triggers on merged PRs to main, dev/*, and release/* branches.
+
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - 'dev/v*'
+      - 'release/v*'
+
+jobs:
+  release:
+    # Only run when PR is merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write      # For tags and releases
+      pull-requests: write # For backflow PRs
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for tag operations
+      
+      - name: Run ReleaseFlow
+        uses: GrexyLoco/K.Actions.ReleaseFlow@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

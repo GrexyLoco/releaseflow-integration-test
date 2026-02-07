@@ -1,0 +1,56 @@
+name: Plan Release (PO Dispatch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'Zielversion (ohne v-Prefix, z.B. 2.0.0)'
+        required: true
+        type: string
+      base:
+        description: 'Basis-Commit/Tag (default: latest-stable)'
+        required: false
+        default: 'latest-stable'
+        type: string
+
+jobs:
+  plan-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import ReleaseFlow
+        shell: pwsh
+        run: |
+          Import-Module ./K.Actions.ReleaseFlow.psd1
+
+      - name: Create Release Train
+        id: create
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $result = New-ReleaseTrain `
+            -TargetVersion '${{ inputs.target_version }}' `
+            -Base '${{ inputs.base }}'
+
+          "dev-branch=$($result.DevBranch)" >> $env:GITHUB_OUTPUT
+          "intent-url=$($result.IntentUrl)" >> $env:GITHUB_OUTPUT
+          "base-commit=$($result.BaseCommit)" >> $env:GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "## ✅ Release Train erstellt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dev Branch:** ${{ steps.create.outputs.dev-branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Intent URL:** ${{ steps.create.outputs.intent-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base Commit:** ${{ steps.create.outputs.base-commit }}" >> $GITHUB_STEP_SUMMARY
+
+    outputs:
+      dev-branch: ${{ steps.create.outputs.dev-branch }}
+      intent-url: ${{ steps.create.outputs.intent-url }}
+      base-commit: ${{ steps.create.outputs.base-commit }}
