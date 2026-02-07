@@ -6,3 +6,14 @@ function Get-TestVersion {
 }
 
 Export-ModuleMember -Function Get-TestVersion
+
+
+function Get-FirstFeature {
+    <#
+    .SYNOPSIS
+        First feature of v1.0.0
+    #>
+    return 'Hello from Feature 1!'
+}
+
+Export-ModuleMember -Function Get-FirstFeature
