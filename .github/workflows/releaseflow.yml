@@ -1,0 +1,51 @@
+# ReleaseFlow Workflow
+#
+# Automatische Release-Orchestrierung bei gemergten PRs
+# Unterstützt: Alpha (dev/*), Beta (release/*), Stable (main/master)
+#
+# Hinweis: Verwendet PAT für Zugriff auf private Action
+
+name: ReleaseFlow
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+      - 'dev/v*'
+      - 'release/v*'
+
+jobs:
+  release:
+    # Nur bei gemergten PRs (nicht bei geschlossenen ohne Merge)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.LOESCHMICH }}
+      
+      - name: Checkout ReleaseFlow Action
+        uses: actions/checkout@v4
+        with:
+          repository: GrexyLoco/K.Actions.ReleaseFlow
+          path: .github/actions/releaseflow
+          token: ${{ secrets.LOESCHMICH }}
+      
+      - name: Run ReleaseFlow
+        uses: ./.github/actions/releaseflow
+        with:
+          github-token: ${{ secrets.LOESCHMICH }}
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## ReleaseFlow Result" >> $GITHUB_STEP_SUMMARY
+          echo "- **Phase:** ${{ steps.release.outputs.phase || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.release.outputs.version || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL:** ${{ steps.release.outputs.release-url || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+

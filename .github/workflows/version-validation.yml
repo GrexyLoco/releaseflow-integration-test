@@ -1,0 +1,55 @@
+# Version File Validation Workflow
+#
+# Validiert Versions-Dateien auch bei [skip ci] Commits
+# Durch Path-Filter wird der Workflow trotzdem ausgelöst
+
+name: Version Validation
+
+on:
+  push:
+    paths:
+      # PowerShell Versioning
+      - '**/*.psd1'
+      # Erweiterbar:
+      # - '**/Directory.Build.props'
+      # - '**/*.csproj'
+      # - '**/package.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-powershell:
+    name: Validate PowerShell Manifests
+    runs-on: ubuntu-latest
+    if: hashFiles('**/*.psd1') != ''
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate .psd1 files
+        shell: pwsh
+        run: |
+          $errors = @()
+          
+          Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
+            Write-Host "Validating: $($_.FullName)"
+            try {
+              $null = Import-PowerShellDataFile -Path $_.FullName -ErrorAction Stop
+              Write-Host "  ✅ Valid" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "  ❌ Invalid: $_" -ForegroundColor Red
+              $errors += "- $($_.FullName): $_"
+            }
+          }
+          
+          if ($errors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "❌ Validation failed for $($errors.Count) file(s):" -ForegroundColor Red
+            $errors | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
+          
+          Write-Host ""
+          Write-Host "✅ All PowerShell manifests are valid" -ForegroundColor Green
