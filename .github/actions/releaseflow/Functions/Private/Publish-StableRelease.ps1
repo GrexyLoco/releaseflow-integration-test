@@ -28,13 +28,6 @@ function Publish-StableRelease {
 
     Write-Verbose "Publish-StableRelease: Publishing stable release $($Context.Version)..."
 
-    # Import Smartagr for tagging
-    Import-Module K.PSGallery.Smartagr -Force
-
-    # Create stable tag via Smartagr (includes smart tags: v1, v1.2, latest)
-    Write-Information "Creating stable release: $($Context.Version)"
-    $tagResult = New-SemanticReleaseTags -TargetVersion $Context.Version
-
     # Update project version files (stable, no PreRelease)
     Write-Verbose "Publish-StableRelease: Updating project version to $($Context.Version)..."
     $versionBase = $Context.Version.TrimStart('v')
@@ -53,7 +46,7 @@ function Publish-StableRelease {
     }
     if ($commitSha) {
         Write-Information "Version updated and committed: $commitSha"
-        git push origin main
+        git push origin $Context.TargetBranch
     }
 
     # Publish the draft release (convert from draft to published)
@@ -67,7 +60,7 @@ function Publish-StableRelease {
         & gh api --method PATCH "repos/$($Context.Repository)/releases/$($Context.Intent.Id)" `
             -f draft=false `
             -f tag_name=$($Context.Version) `
-            -f target_commitish='main'
+            -f target_commitish=$($Context.TargetBranch)
 
         $releaseUrl = $Context.Intent.Url
     }
@@ -89,7 +82,7 @@ This is an automated stable release.
             --repo $Context.Repository `
             --title "Release: $($Context.Version)" `
             --notes $releaseBody `
-            --target 'main'
+            --target $Context.TargetBranch
 
         $releaseUrl = & gh release view $Context.Version --repo $Context.Repository --json url -q '.url'
     }
@@ -101,7 +94,11 @@ This is an automated stable release.
     # The stable tag (e.g., v1.0.0) was already created by GitHub above
     # Smartagr will skip it if it already exists and only create/update smart tags
     Write-Information "Creating smart tags for: $($Context.Version)"
-    $tagResult = New-SemanticReleaseTags -TargetVersion $Context.Version -PushToRemote
+    $tagResult = New-SemanticReleaseTags -TargetVersion $Context.Version
+
+    # Push all tags to remote
+    Write-Verbose "Publish-StableRelease: Pushing tags to origin..."
+    git push origin --tags
 
     # Create backflow PRs to all open dev trains
     Write-Verbose "Publish-StableRelease: Creating backflow PRs..."
