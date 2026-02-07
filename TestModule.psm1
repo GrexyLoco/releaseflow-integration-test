@@ -24,3 +24,6 @@ function Get-SecondFeature {
 }
 
 Export-ModuleMember -Function Get-SecondFeature
+
+
+function Get-SecondFeature { return 'Feature 2!' }
