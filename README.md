@@ -15,3 +15,4 @@ Aktuell: **0.0.0** (wird durch ReleaseFlow erhöht)
 # Test 18:01:48
 # Beta promotion test
 # Beta bugfix
+# Beta bugfix
