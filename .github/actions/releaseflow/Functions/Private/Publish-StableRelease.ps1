@@ -91,14 +91,18 @@ This is an automated stable release.
     Import-Module K.PSGallery.Smartagr -Force
 
     # Create smart tags via Smartagr (v1, v1.2, latest)
-    # The stable tag (e.g., v1.0.0) was already created by GitHub above
-    # Smartagr will skip it if it already exists and only create/update smart tags
+    # The stable tag (e.g., v1.0.0) may already exist from publishing the release
+    # Use -Force to update existing tags and create smart tags
     Write-Information "Creating smart tags for: $($Context.Version)"
-    $tagResult = New-SemanticReleaseTags -TargetVersion $Context.Version
+    $tagResult = New-SemanticReleaseTags -TargetVersion $Context.Version -Force
+    $smartTags = @()
+    if ($tagResult -and $tagResult.PSObject.Properties['SmartTags']) {
+        $smartTags = $tagResult.SmartTags
+    }
 
     # Push all tags to remote
     Write-Verbose "Publish-StableRelease: Pushing tags to origin..."
-    git push origin --tags
+    git push origin --tags --force
 
     # Create backflow PRs to all open dev trains
     Write-Verbose "Publish-StableRelease: Creating backflow PRs..."
@@ -113,7 +117,7 @@ This is an automated stable release.
 
     [PSCustomObject]@{
         ReleaseUrl   = $releaseUrl
-        TagsCreated  = @($Context.Version) + $tagResult.SmartTags
+        TagsCreated  = @($Context.Version) + $smartTags
         BackflowPRs  = $backflowPRs
     }
 }
