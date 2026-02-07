@@ -21,3 +21,4 @@ Aktuell: **0.0.0** (wird durch ReleaseFlow erhöht)
 ## Release v1.0.0
 This is the stable release of TestModule.
 ## G4 Fix Applied
+## GITHUB_JOB Fix Applied
