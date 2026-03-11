@@ -3,7 +3,7 @@
     RootModule        = 'K.Actions.ReleaseFlow.psm1'
 
     # Version number of this module.
-    ModuleVersion = '1.5.0'
+    ModuleVersion = '1.0.0'
 
     # ID used to uniquely identify this module
     GUID              = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
@@ -47,7 +47,6 @@
     # Private data to pass to the module specified in RootModule/ModuleToProcess
     PrivateData       = @{
         PSData = @{
-            Prerelease = 'beta.1'
             # Tags applied to this module for discoverability
             Tags         = @(
                 'GitHub'
