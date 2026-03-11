@@ -30,8 +30,8 @@ function New-BetaRelease {
 
     # Get next beta number from Smartagr
     $nextNumber = Get-NextPreReleaseNumber -Version $Context.Version -Type 'beta'
-    # Use SemVer-compliant format: v1.0.0-beta.1 (with dot before number)
-    $betaTag = "$($Context.Version)-beta.$nextNumber"
+    # PSGallery requires SemVer 1.0: no dot separator (beta3, not beta.3)
+    $betaTag = "$($Context.Version)-beta$nextNumber"
 
     Write-Information "Creating beta release: $betaTag"
 
@@ -48,7 +48,7 @@ function New-BetaRelease {
         git config user.email "github-actions[bot]@users.noreply.github.com"
     }
     
-    $versionUpdate = Update-ProjectVersion -Version $versionBase -PreRelease "beta.$nextNumber"
+    $versionUpdate = Update-ProjectVersion -Version $versionBase -PreRelease "beta$nextNumber"
     # Use PSObject.Properties for strict-mode-safe property access
     $commitSha = $null
     if ($versionUpdate -and $versionUpdate.PSObject.Properties['CommitSha']) {

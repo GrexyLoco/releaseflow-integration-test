@@ -30,8 +30,8 @@ function New-AlphaRelease {
 
     # Get next alpha number from Smartagr
     $nextNumber = Get-NextPreReleaseNumber -Version $Context.Version -Type 'alpha'
-    # Use SemVer-compliant format: v1.0.0-alpha.1 (with dot before number)
-    $alphaTag = "$($Context.Version)-alpha.$nextNumber"
+    # PSGallery requires SemVer 1.0: no dot separator (alpha3, not alpha.3)
+    $alphaTag = "$($Context.Version)-alpha$nextNumber"
 
     Write-Information "Creating alpha release: $alphaTag"
 
@@ -48,7 +48,7 @@ function New-AlphaRelease {
         git config user.email "github-actions[bot]@users.noreply.github.com"
     }
     
-    $versionUpdate = Update-ProjectVersion -Version $versionBase -PreRelease "alpha.$nextNumber"
+    $versionUpdate = Update-ProjectVersion -Version $versionBase -PreRelease "alpha$nextNumber"
     # Use PSObject.Properties for strict-mode-safe property access
     $commitSha = $null
     if ($versionUpdate -and $versionUpdate.PSObject.Properties['CommitSha']) {
